@@ -42,26 +42,58 @@ console.log("[Test 1] Checking initial planet data structure and properties...")
 if (typeof planets === 'undefined' || !Array.isArray(planets)) {
     console.error("FAIL: `planets` array is not defined or not an array.");
 } else if (planets.length === 0 && allPlanetsData.length > 0) { // Check if planets might be initially empty but allPlanetsData has items
-    console.log("INFO: `planets` array is initially empty, using `allPlanetsData` for structure check.");
-    if (allPlanetsData.length === 0) {
-        console.error("FAIL: `allPlanetsData` is also empty.");
+    console.log("INFO: `planets` array might be modified by tests, using `allPlanetsData` for structure check of original data.");
+    if (typeof allPlanetsData === 'undefined' || !Array.isArray(allPlanetsData) || allPlanetsData.length === 0) {
+        console.error("FAIL: `allPlanetsData` is not defined, not an array, or is empty.");
     } else {
-        const samplePlanet = allPlanetsData[0];
-        if (!samplePlanet.name || !samplePlanet.color || typeof samplePlanet.orbitalRadius !== 'number' || typeof samplePlanet.size !== 'number' || typeof samplePlanet.speed !== 'number') {
-            console.error("FAIL: A planet in `allPlanetsData` is missing essential properties or has incorrect types.");
+        let allChecksPassed = true;
+        allPlanetsData.forEach(p => {
+            if (!p.name || !p.color || typeof p.size !== 'number') {
+                console.error(`FAIL: Planet/celestial body ${p.name} is missing name, color, or size.`);
+                allChecksPassed = false;
+            }
+            if (p.orbitingPlanetName) { // It's a moon
+                if (typeof p.orbitRadiusAroundPlanet !== 'number' || typeof p.speedAroundPlanet !== 'number') {
+                    console.error(`FAIL: Moon ${p.name} is missing orbital parameters for moon.`);
+                    allChecksPassed = false;
+                }
+            } else { // It's a planet
+                if (typeof p.orbitalRadius !== 'number' || typeof p.speed !== 'number') {
+                    console.error(`FAIL: Planet ${p.name} is missing orbital parameters for planet.`);
+                    allChecksPassed = false;
+                }
+            }
+        });
+
+        const moon = allPlanetsData.find(p => p.name === 'Moon');
+        if (!moon) {
+            console.error("FAIL: Moon data is not defined in `allPlanetsData`.");
+            allChecksPassed = false;
         } else {
-            console.log("PASS: `allPlanetsData` structure seems okay.");
+            if (moon.orbitingPlanetName !== 'Earth') {
+                console.error(`FAIL: Moon should be orbiting 'Earth', but is orbiting '${moon.orbitingPlanetName}'.`);
+                allChecksPassed = false;
+            }
+            if (typeof moon.orbitRadiusAroundPlanet !== 'number' || typeof moon.speedAroundPlanet !== 'number') {
+                console.error("FAIL: Moon is missing specific properties: `orbitRadiusAroundPlanet` or `speedAroundPlanet` are not numbers.");
+                allChecksPassed = false;
+            } else {
+                console.log("INFO: Moon data specific properties are present and seem correct.");
+            }
+        }
+
+        if (allChecksPassed) {
+            console.log("PASS: `allPlanetsData` structure and essential properties (including Moon) seem okay.");
+        } else {
+            console.error("FAIL: One or more checks failed for `allPlanetsData` structure.");
         }
     }
-} else if (planets.length > 0) {
-    const samplePlanet = planets[0];
-    if (!samplePlanet.name || !samplePlanet.color || typeof samplePlanet.orbitalRadius !== 'number' || typeof samplePlanet.size !== 'number' || typeof samplePlanet.speed !== 'number') {
-        console.error("FAIL: A planet in `planets` is missing essential properties or has incorrect types.");
-    } else {
-        console.log("PASS: Initial `planets` array structure seems okay.");
-    }
+} 
+// Check initial `planets` array state separately if needed, but primary data source is `allPlanetsData`
+if (typeof planets === 'undefined' || !Array.isArray(planets)) {
+    console.warn("WARN: `planets` runtime array is not defined or not an array at the start of this test script. This might be okay if populated by script.js itself.");
 } else {
-    console.warn("WARN: `planets` array is empty, cannot fully check structure. This might be intended if planets are added dynamically.");
+    console.log("INFO: Initial `planets` runtime array length: " + planets.length);
 }
 
 
@@ -100,38 +132,100 @@ console.log("\n[Test 3] Conceptual check for togglePlanet logic...");
 // 4. Mocking `document.getElementById` for `updateButtonAppearance`.
 
 // For this basic test, we'll just check if the function can be called without immediate error
-// if planets and allPlanetsData are somewhat correctly defined.
+// if planets and allPlanetsData are somewhat correctly defined. Assumes script.js has run and populated these.
 if (typeof togglePlanet === 'function' && typeof planets !== 'undefined' && typeof allPlanetsData !== 'undefined' && allPlanetsData.length > 0) {
+    // Ensure Earth and Moon are in their initial state for this test.
+    // This might require resetting state if other tests modify `planets` array.
+    // For simplicity, we assume script.js initializes `planets` correctly before tests.
+    // Or, one could deep-copy allPlanetsData to planets at the start of this specific test block.
+    
+    // Restore planets from allPlanetsData to reset state for this test
+    // This is a simple way to reset if script.js doesn't re-initialize planets itself.
+    // Note: This creates a new `planets` array; ensure it's the one script.js functions will use.
+    // If script.js functions always refer to the global `planets`, this is fine.
+    global.planets = JSON.parse(JSON.stringify(allPlanetsData));
+    console.log("INFO: `planets` array reset from `allPlanetsData` for toggle test consistency.");
+
+
+    const testPlanetName = 'Earth'; // Specific test for Earth and Moon
+    let earth, moon;
+
     try {
-        // Simulate toggling the first planet from allPlanetsData
-        const testPlanetName = allPlanetsData[0].name;
-        console.log(`INFO: Attempting to toggle planet: ${testPlanetName}`);
-        togglePlanet(testPlanetName); // Toggle once (remove or set inactive)
-        
-        const planetInPlanetsArray = planets.find(p => p.name === testPlanetName);
-        if (planetInPlanetsArray && planetInPlanetsArray.active === false) {
+        console.log(`INFO: [Test 3.1] Toggling ${testPlanetName} OFF.`);
+        togglePlanet(testPlanetName); 
+        earth = planets.find(p => p.name === testPlanetName);
+        moon = planets.find(p => p.name === 'Moon');
+
+        if (earth && earth.active === false) {
             console.log(`PASS: ${testPlanetName} marked inactive.`);
-        } else if (!planetInPlanetsArray) {
-            console.log(`PASS: ${testPlanetName} potentially removed from active list (needs verification if this is the desired outcome of first toggle).`);
         } else {
-            console.warn(`WARN: State of ${testPlanetName} after first toggle is not as expected (active: ${planetInPlanetsArray ? planetInPlanetsArray.active : 'N/A'}). This might be fine depending on initial state.`);
+            console.error(`FAIL: ${testPlanetName} not marked inactive as expected. Active: ${earth ? earth.active : 'N/A'}`);
+        }
+        if (moon && moon.active === false) {
+            console.log("PASS: Moon correctly marked inactive when Earth is inactive.");
+        } else {
+            console.error(`FAIL: Moon not marked inactive when Earth is inactive. Active: ${moon ? moon.active : 'N/A'}`);
         }
 
-        togglePlanet(testPlanetName); // Toggle again (add back or set active)
-        const planetRestored = planets.find(p => p.name === testPlanetName);
-         if (planetRestored && planetRestored.active === true) {
-            console.log(`PASS: ${testPlanetName} marked active again after second toggle.`);
+        console.log(`INFO: [Test 3.2] Toggling ${testPlanetName} ON.`);
+        togglePlanet(testPlanetName); 
+        earth = planets.find(p => p.name === testPlanetName); // Re-find after toggle
+        moon = planets.find(p => p.name === 'Moon');   // Re-find after toggle
+
+        if (earth && earth.active === true) {
+            console.log(`PASS: ${testPlanetName} marked active again.`);
         } else {
-            console.warn(`WARN: ${testPlanetName} not marked active after second toggle (active: ${planetRestored ? planetRestored.active : 'N/A'}).`);
+            console.error(`FAIL: ${testPlanetName} not marked active as expected. Active: ${earth ? earth.active : 'N/A'}`);
         }
-        console.log("PASS: `togglePlanet` function is callable and ran without throwing immediate errors for a sample case.");
+        if (moon && moon.active === true) {
+            console.log("PASS: Moon correctly marked active when Earth is active again.");
+        } else {
+            console.error(`FAIL: Moon not marked active when Earth is active again. Active: ${moon ? moon.active : 'N/A'}`);
+        }
+        
+        // Test a non-Earth planet to ensure Moon state isn't affected
+        const otherPlanetName = 'Mars';
+        let mars = planets.find(p => p.name === otherPlanetName);
+        if (mars) { // Ensure Mars exists before toggling
+            console.log(`INFO: [Test 3.3] Toggling ${otherPlanetName} OFF (Moon should remain active if Earth is active).`);
+            // Ensure Earth is active before this sub-test
+            if (!earth || !earth.active) {
+                 togglePlanet('Earth'); // Make sure Earth is on
+                 earth = planets.find(p => p.name === 'Earth');
+                 moon = planets.find(p => p.name === 'Moon'); 
+                 console.log("INFO: Ensured Earth is active for Mars toggle test.");
+            }
+            const moonStateBeforeMarsToggle = moon ? moon.active : 'N/A';
+
+            togglePlanet(otherPlanetName);
+            mars = planets.find(p => p.name === otherPlanetName);
+            moon = planets.find(p => p.name === 'Moon'); // re-fetch moon
+
+            if(mars && mars.active === false) {
+                console.log(`PASS: ${otherPlanetName} marked inactive.`);
+            } else {
+                 console.error(`FAIL: ${otherPlanetName} not marked inactive. Active: ${mars ? mars.active : 'N/A'}`);
+            }
+            if (moon && moon.active === moonStateBeforeMarsToggle) {
+                console.log(`PASS: Moon's active state (${moon.active}) correctly unchanged by ${otherPlanetName} toggle.`);
+            } else {
+                console.error(`FAIL: Moon's active state changed by ${otherPlanetName} toggle. Was ${moonStateBeforeMarsToggle}, now ${moon ? moon.active : 'N/A'}`);
+            }
+            // Toggle Mars back on for consistency for any subsequent tests
+            togglePlanet(otherPlanetName);
+        } else {
+            console.warn(`WARN: Planet ${otherPlanetName} not found, skipping that part of toggle test.`);
+        }
+
+
+        console.log("PASS: `togglePlanet` function is callable and ran without throwing immediate errors for Earth/Moon and Mars cases.");
 
     } catch (e) {
         console.error(`FAIL: Calling \`togglePlanet\` threw an error: ${e.message}`);
         console.error(e.stack);
     }
 } else {
-    console.warn("WARN: Cannot perform conceptual check for `togglePlanet` due to missing function or data.");
+    console.warn("WARN: Cannot perform conceptual check for `togglePlanet` due to missing function, `planets` or `allPlanetsData`.");
 }
 
 
@@ -165,6 +259,66 @@ if (typeof setupGUI === 'function' && typeof gui !== 'undefined' && typeof allPl
 }
 
 console.log("\n--- Basic Solar System Tests Complete ---");
+
+
+// --- Test Label Drawing (Conceptual) ---
+console.log("\n[Test 5] Conceptual check for label drawing...");
+if (typeof drawPlanet === 'function' && typeof gameLoop === 'function' && typeof ctx !== 'undefined' && typeof ctx.fillText === 'function') {
+    try {
+        // Ensure there's at least one active planet for drawPlanet to attempt drawing a label
+        if (planets && allPlanetsData && allPlanetsData.length > 0) {
+            if (!planets.some(p => p.active)) { // If no planets are active, activate one for test
+                 // Attempt to activate Earth if present, otherwise the first planet
+                let planetToActivate = allPlanetsData.find(p => p.name === "Earth") || allPlanetsData[0];
+                if (typeof togglePlanet === 'function') {
+                    togglePlanet(planetToActivate.name); // This will also handle its moon if it's Earth
+                    console.log(`INFO: Activated ${planetToActivate.name} for label drawing test.`);
+                } else {
+                    // Fallback if togglePlanet is not available: manually activate in the test `planets` array
+                    let p = planets.find(pl => pl.name === planetToActivate.name);
+                    if(p) p.active = true;
+                    if(planetToActivate.name === "Earth") {
+                        let m = planets.find(pl => pl.name === "Moon");
+                        if(m) m.active = true;
+                    }
+                     console.log(`INFO: Manually activated ${planetToActivate.name} for label drawing test (togglePlanet not found).`);
+                }
+            }
+        }
+
+
+        console.log("INFO: Calling drawPlanet for each active planet (conceptual check for fillText).");
+        let activePlanetsForTest = planets ? planets.filter(p => p.active) : [];
+        if (activePlanetsForTest.length === 0) {
+            console.warn("WARN: No active planets to test label drawing with for drawPlanet.");
+        }
+        activePlanetsForTest.forEach(p => {
+            drawPlanet(p); // This should call ctx.fillText internally if planet is active
+        });
+
+        console.log("INFO: Calling gameLoop once (conceptual check for Sun's label fillText).");
+        // Mock requestAnimationFrame to prevent looping, just run one frame
+        const originalRAF = global.requestAnimationFrame;
+        let gameLoopCalled = false;
+        global.requestAnimationFrame = (cb) => { if(!gameLoopCalled) { cb(); gameLoopCalled = true; } }; 
+        gameLoop(); // This should call ctx.fillText for the Sun
+        global.requestAnimationFrame = originalRAF; // Restore original rAF
+
+        // No direct assertion on fillText calls here, as it's a simple mock.
+        // The main check is that the functions run without error.
+        console.log("PASS: `drawPlanet` and `gameLoop` (single frame) ran without throwing errors related to label drawing.");
+        console.log("INFO: Manual verification of actual text labels on canvas is recommended.");
+
+    } catch (e) {
+        console.error(`FAIL: Error during conceptual label drawing test: ${e.message}`);
+        console.error(e.stack);
+    }
+} else {
+    console.warn("WARN: Cannot perform conceptual check for label drawing due to missing functions or ctx.fillText mock.");
+}
+
+console.log("\n--- All Solar System Tests Concluded ---");
+
 
 // To use these tests:
 // 1. Make sure script.js is loaded BEFORE test.js if running in a browser.
