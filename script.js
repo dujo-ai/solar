@@ -35,6 +35,14 @@ function drawPlanet(planet) {
     ctx.fillStyle = planet.color;
     ctx.fill();
     ctx.closePath();
+
+    // Display planet name
+    ctx.font = '10px Arial';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    const textX = x;
+    const textY = y + planet.size + 10; // Offset for text below planet
+    ctx.fillText(planet.name, textX, textY);
 }
 
 function updatePlanetPositions() {
